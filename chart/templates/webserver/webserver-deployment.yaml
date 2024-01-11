@@ -180,6 +180,8 @@ spec:
           {{- end }}
           resources: {{- toYaml .Values.webserver.resources | nindent 12 }}
           volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
             {{- if semverCompare ">=1.10.12" .Values.airflowVersion }}
             - name: config
               mountPath: {{ include "airflow_pod_template_file" . }}/pod_template_file.yaml
@@ -259,6 +261,9 @@ spec:
           {{- toYaml .Values.webserver.extraContainers | nindent 8 }}
         {{- end }}
       volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-dags
         - name: config
           configMap:
             name: {{ template "airflow_config" . }}
@@ -266,19 +271,6 @@ spec:
         - name: webserver-config
           configMap:
             name: {{ template "airflow_webserver_config_configmap_name" . }}
-        {{- end }}
-        {{- if (semverCompare "<2.0.0" .Values.airflowVersion) }}
-        {{- if .Values.dags.persistence.enabled }}
-        - name: dags
-          persistentVolumeClaim:
-            claimName: {{ template "airflow_dags_volume_claim" . }}
-        {{- else if .Values.dags.gitSync.enabled }}
-        - name: dags
-          emptyDir: {{- toYaml (default (dict) .Values.dags.gitSync.emptyDirConfig) | nindent 12 }}
-        {{- if  .Values.dags.gitSync.sshKeySecret }}
-          {{- include "git_sync_ssh_key_volume" . | indent 8 }}
-        {{- end }}
-        {{- end }}
         {{- end }}
         {{- if .Values.logs.persistence.enabled }}
         - name: logs
